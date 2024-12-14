@@ -1,0 +1,13 @@
+includes:
+	- services.php
+parameters:
+	cache:
+		path: '%constants.tempDir%cache.db'
+		journal: '%constants.tempDir%journal.db'
+extensions:
+	caching: Nette\Bridges\CacheDI\CacheExtension(%constants.tempDir%)
+services:
+	cache.storage: Nette\Caching\Storages\SQLiteStorage(%cache.path%)
+	caching.journal: Nette\Caching\Storages\SQLiteJournal(%cache.journal%)
+	cache: Lsr\Caching\Cache(@cache.storage, null, %constants.debug%)
+	cache.extension.latte: Nette\Bridges\CacheLatte\CacheExtension(@cache.storage)

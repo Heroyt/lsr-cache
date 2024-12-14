@@ -1,0 +1,11 @@
+parameters:
+	dynamicConstantNames:
+		- LANGUAGE_DIR
+		- LANGUAGE_FILE_NAME
+		- DEFAULT_LANGUAGE
+		- ROOT
+	editorUrl: 'phpstorm://open?file=%%file%%&line=%%line%%'
+	level: 8
+	paths:
+		- src
+	tmpDir: temp

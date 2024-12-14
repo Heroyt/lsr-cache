@@ -1,0 +1,57 @@
+{
+  "name": "lsr/cache",
+  "description": "Laser framework core - Cache",
+  "version": "0.3.0",
+  "repositories": [
+    {
+      "type": "composer",
+      "url": "https://packages.laserliga.cz"
+    }
+  ],
+  "scripts": {
+    "test": "XDEBUG_MODE=coverage ./vendor/bin/phpunit",
+    "docs": "doxygen",
+    "phpstan": "./vendor/bin/phpstan",
+    "phpcs": "./vendor/bin/phpcs",
+    "phpcbf": "./vendor/bin/phpcbf"
+  },
+  "require-dev": {
+    "roave/security-advisories": "dev-latest",
+    "phpunit/phpunit": "^11",
+    "phpstan/phpstan": "^2.0",
+    "phpstan/extension-installer": "^1.2",
+    "squizlabs/php_codesniffer": "^3.11"
+  },
+  "autoload": {
+    "psr-4": {
+      "Lsr\\Caching\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "TestCases\\": "tests/TestCases/"
+    }
+  },
+  "authors": [
+    {
+      "name": "Tomáš Vojík",
+      "email": "vojik@wboy.cz"
+    }
+  ],
+  "minimum-stability": "stable",
+  "require": {
+    "php": ">=8.4",
+    "nette/caching": "^3.3",
+    "ext-redis": "*"
+  },
+  "config": {
+    "allow-plugins": {
+      "phpstan/extension-installer": true
+    }
+  },
+  "extra": {
+    "branch-alias": {
+      "v0.3": "0.3.x-dev"
+    }
+  }
+}

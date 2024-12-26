@@ -1,7 +1,7 @@
 {
   "name": "lsr/cache",
   "description": "Laser framework core - Cache",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "repositories": [
     {
       "type": "composer",
@@ -42,7 +42,10 @@
   "require": {
     "php": ">=8.4",
     "nette/caching": "^3.3",
-    "ext-redis": "*"
+    "ext-redis": "*",
+    "nette/di": "^3.2",
+    "tracy/tracy": "^2.10",
+    "lsr/helpers": "^0.2.13"
   },
   "config": {
     "allow-plugins": {

@@ -17,7 +17,8 @@ class RedisJournal implements Journal
     private const string PRIORITY_KEY = 'journal:dependencies:priority';
 
     public function __construct(
-        private readonly Redis $redis
+        private readonly Redis $redis,
+        private readonly string $namespace = '',
     ) {
         if (!static::isAvailable()) {
             throw new NotSupportedException("PHP extension 'redis' is not loaded.");
@@ -37,23 +38,29 @@ class RedisJournal implements Journal
      * @param  array{tags?:string[],priority?:float}  $dependencies
      */
     public function write(string $key, array $dependencies): void {
-        if (!empty($dependencies[Cache::Tags])) {
-            $reverseTagKey = $this::REVERSE_TAG_PREFIX . $key;
-            $tags = $this->redis->sMembers($reverseTagKey);
-            if (!empty($tags)) {
-                foreach ($tags as $tag) {
-                    $this->redis->sRem($this::TAG_PREFIX . $tag, $key);
+        $reverseTagKey = $this->getKey(self::REVERSE_TAG_PREFIX . $key);
+        $tags = $this->redis->sMembers($reverseTagKey);
+        if (is_array($tags)) {
+            foreach ($tags as $tag) {
+                $tagKey = $this->getKey(self::TAG_PREFIX . $tag);
+                $this->redis->sRem($tagKey, $key);
+                if ($this->redis->sCard($tagKey) === 0) {
+                    $this->redis->del($tagKey);
                 }
             }
+        }
+        $this->redis->del($reverseTagKey);
+        $this->redis->zRem($this->getKey(self::PRIORITY_KEY), $key);
 
+        if (!empty($dependencies[Cache::Tags])) {
             foreach ($dependencies[Cache::Tags] as $tag) {
-                $this->redis->sAdd(self::TAG_PREFIX . $tag, $key);
+                $this->redis->sAdd($this->getKey(self::TAG_PREFIX . $tag), $key);
             }
             $this->redis->sAddArray($reverseTagKey, $dependencies[Cache::Tags]);
         }
 
         if (!empty($dependencies[Cache::Priority])) {
-            $this->redis->zAdd(self::PRIORITY_KEY, $dependencies[Cache::Priority], $key);
+            $this->redis->zAdd($this->getKey(self::PRIORITY_KEY), $dependencies[Cache::Priority], $key);
         }
     }
 
@@ -66,13 +73,17 @@ class RedisJournal implements Journal
      */
     public function clean(array $conditions): ?array {
         if (!empty($conditions[Cache::All])) {
+            $this->cleanAll();
             return null;
         }
 
         /** @var string[] $keys */
         $keys = [];
         if (!empty($conditions[Cache::Tags])) {
-            $tags = array_map(fn(string $tag) => $this::TAG_PREFIX . $tag, ((array) $conditions[Cache::Tags]));
+            $tags = array_map(
+                fn(string $tag) => $this->getKey(self::TAG_PREFIX . $tag),
+                ((array) $conditions[Cache::Tags]),
+            );
             $keys = $this->redis->sUnion(...$tags);
             if ($keys === false) {
                 $keys = [];
@@ -81,23 +92,57 @@ class RedisJournal implements Journal
         assert(is_array($keys));
 
         if (!empty($conditions[Cache::Priority])) {
-            $priorityKeys = $this->redis->zRangeByScore(self::PRIORITY_KEY, '0.0', (string) $conditions[Cache::Priority]);
+            $priorityKey = $this->getKey(self::PRIORITY_KEY);
+            $priorityKeys = $this->redis->zRangeByScore($priorityKey, '0.0', (string) $conditions[Cache::Priority]);
             if ($priorityKeys === false) {
                 $priorityKeys = [];
             }
             assert(is_array($priorityKeys));
             $keys = array_unique(array_merge($keys, $priorityKeys));
-            $this->redis->zRemRangeByScore(self::PRIORITY_KEY, '0.0', (string) $conditions[Cache::Priority]);
         }
 
-        $allTagsKeys = array_map(fn(string $key) => $this::REVERSE_TAG_PREFIX . $key, $keys);
-        if (!empty($allTagsKeys)) {
-            $allTags = $this->redis->sUnion(...array_map(fn(string $tag) => $this::TAG_PREFIX . $tag, $allTagsKeys));
-            if (is_array($allTags) && !empty($allTags)) {
-                $this->redis->del(...$allTags);
+        foreach ($keys as $key) {
+            $reverseTagKey = $this->getKey(self::REVERSE_TAG_PREFIX . $key);
+            $tags = $this->redis->sMembers($reverseTagKey);
+            if (is_array($tags)) {
+                foreach ($tags as $tag) {
+                    $tagKey = $this->getKey(self::TAG_PREFIX . $tag);
+                    $this->redis->sRem($tagKey, $key);
+                    if ($this->redis->sCard($tagKey) === 0) {
+                        $this->redis->del($tagKey);
+                    }
+                }
             }
+
+            $this->redis->del($reverseTagKey);
+            $this->redis->zRem($this->getKey(self::PRIORITY_KEY), $key);
         }
 
         return $keys;
+    }
+
+    private function getKey(string $key): string {
+        return $this->namespace . $key;
+    }
+
+    private function cleanAll(): void {
+        $iterator = null;
+        $namespacePattern = strtr(
+            $this->namespace,
+            [
+                '\\' => '\\\\',
+                '*'  => '\\*',
+                '?'  => '\\?',
+                '['  => '\\[',
+                ']'  => '\\]',
+            ],
+        );
+        $pattern = $namespacePattern . 'journal:dependencies:*';
+        do {
+            $keys = $this->redis->scan($iterator, $pattern, 100);
+            if (is_array($keys) && !empty($keys)) {
+                $this->redis->del(...$keys);
+            }
+        } while ($iterator !== 0);
     }
 }

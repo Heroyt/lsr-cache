@@ -8,7 +8,7 @@
 
     <arg name="basepath" value="."/>
     <arg name="colors"/>
-    <arg name="parallel" value="75"/>
+    <arg name="parallel" value="1"/>
     <arg value="p"/>
     <arg value="s"/>
 

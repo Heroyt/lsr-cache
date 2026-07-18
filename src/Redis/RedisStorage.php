@@ -17,16 +17,20 @@ class RedisStorage implements Storage, BulkReader
 {
     use SmartObject;
 
+    private const string KEY_INDEX_PREFIX = 'journal:storageKeys:';
+
     /** @internal cache structure */
-    private const string MetaDelta = 'delta';
-    private const string MetaData = 'data';
-    private const string MetaCallbacks = 'callbacks';
+    private const string META_DELTA = 'delta';
+    private const string META_DATA = 'data';
+    private const string META_CALLBACKS = 'callbacks';
 
     /** @var callable(mixed $value):string */
     private $serialize;
 
     /** @var callable(string $serialized):mixed */
     private $unserialize;
+
+    private readonly string $keyIndex;
 
     public function __construct(
         private readonly Redis    $redis,
@@ -45,6 +49,8 @@ class RedisStorage implements Storage, BulkReader
             $this->serialize = 'serialize';
             $this->unserialize = static fn(string $serialized) => unserialize($serialized, ['allowed_classes' => true]);
         }
+
+        $this->keyIndex = self::KEY_INDEX_PREFIX . hash('sha256', $this->prefix);
     }
 
     /**
@@ -74,16 +80,17 @@ class RedisStorage implements Storage, BulkReader
         $data = ($this->unserialize)($meta);
 
         // verify dependencies
-        if (!empty($data[self::MetaCallbacks]) && !Cache::checkCallbacks($data[self::MetaCallbacks])) {
+        if (!empty($data[self::META_CALLBACKS]) && !Cache::checkCallbacks($data[self::META_CALLBACKS])) {
             $this->redis->del($key);
+            $this->redis->sRem($this->keyIndex, $key);
             return null;
         }
 
-        if (!empty($data[self::MetaDelta])) {
-            $this->redis->setex($key, $data[self::MetaDelta], $meta);
+        if (!empty($data[self::META_DELTA])) {
+            $this->redis->setex($key, $data[self::META_DELTA], $meta);
         }
 
-        return $data[self::MetaData];
+        return $data[self::META_DATA];
     }
 
     /**
@@ -104,19 +111,19 @@ class RedisStorage implements Storage, BulkReader
         }
         $key = urlencode($this->prefix . $key);
         $meta = [
-            self::MetaData => $data,
+            self::META_DATA => $data,
         ];
 
         $expire = 0;
         if (isset($dependencies[Cache::Expire])) {
             $expire = (int) $dependencies[Cache::Expire];
             if (!empty($dependencies[Cache::Sliding])) {
-                $meta[self::MetaDelta] = $expire; // sliding time
+                $meta[self::META_DELTA] = $expire; // sliding time
             }
         }
 
         if (isset($dependencies[Cache::Callbacks])) {
-            $meta[self::MetaCallbacks] = $dependencies[Cache::Callbacks];
+            $meta[self::META_CALLBACKS] = $dependencies[Cache::Callbacks];
         }
 
         if (isset($dependencies[Cache::Tags]) || isset($dependencies[Cache::Priority])) {
@@ -132,23 +139,34 @@ class RedisStorage implements Storage, BulkReader
         } else {
             $this->redis->set($key, ($this->serialize)($meta));
         }
+        $this->redis->sAdd($this->keyIndex, $key);
     }
 
     /**
      * @inheritDoc
      */
     public function remove(string $key): void {
-        $this->redis->del(urlencode($this->prefix . $key));
+        $key = urlencode($this->prefix . $key);
+        $this->redis->del($key);
+        $this->redis->sRem($this->keyIndex, $key);
     }
 
     /**
      * @inheritDoc
      *
-     * @param  array{all?: bool, tags?: string[]}  $conditions
+     * A full clean removes only values tracked for this storage prefix and metadata owned by its journal.
+     * It never flushes unrelated Redis data.
+     *
+     * @param  array{all?: bool, tags?: string[], priority?: float}  $conditions
      */
     public function clean(array $conditions): void {
         if (!empty($conditions[Cache::All])) {
-            $this->redis->flushAll();
+            $keys = $this->redis->sMembers($this->keyIndex);
+            if (is_array($keys) && !empty($keys)) {
+                $this->redis->del(...$keys);
+            }
+            $this->redis->del($this->keyIndex);
+            $this->journal?->clean($conditions);
             return;
         }
 
@@ -156,6 +174,7 @@ class RedisStorage implements Storage, BulkReader
             $keys = $this->journal->clean($conditions);
             if ($keys) {
                 $this->redis->del(...$keys);
+                $this->redis->sRem($this->keyIndex, ...$keys);
             }
         }
     }
@@ -178,19 +197,20 @@ class RedisStorage implements Storage, BulkReader
             $prefixedKey = $prefixedKeys[$key];
             /** @var array{data: mixed, delta: int, callbacks: callable[]} $data */
             $data = ($this->unserialize)($meta);
-            if (!empty($data[self::MetaCallbacks]) && !Cache::checkCallbacks($data[self::MetaCallbacks])) {
+            if (!empty($data[self::META_CALLBACKS]) && !Cache::checkCallbacks($data[self::META_CALLBACKS])) {
                 $deleteKeys[] = $prefixedKey;
             } else {
-                $result[$keys[$prefixedKey]] = $data[self::MetaData];
+                $result[$keys[$prefixedKey]] = $data[self::META_DATA];
             }
 
-            if (!empty($data[self::MetaDelta])) {
-                $this->redis->setex($prefixedKey, $data[self::MetaDelta], $meta);
+            if (!empty($data[self::META_DELTA])) {
+                $this->redis->setex($prefixedKey, $data[self::META_DELTA], $meta);
             }
         }
 
         if (!empty($deleteKeys)) {
             $this->redis->del(...$deleteKeys);
+            $this->redis->sRem($this->keyIndex, ...$deleteKeys);
         }
 
         return $result;

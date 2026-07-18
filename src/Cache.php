@@ -62,7 +62,9 @@ class Cache extends \Nette\Caching\Cache
             foreach ($keys as $key) {
                 $result[$key] = $this->load(
                     $key,
-                    $generator !== null ? static fn (?array &$dependencies = null) => $generator($key, $dependencies) : null
+                    $generator !== null
+                        ? static fn (?array &$dependencies = null) => $generator($key, $dependencies)
+                        : null
                 );
             }
 

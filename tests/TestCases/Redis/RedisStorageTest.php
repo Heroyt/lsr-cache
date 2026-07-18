@@ -5,24 +5,24 @@ declare(strict_types=1);
 namespace TestCases\Lsr\Caching\Redis;
 
 use Lsr\Caching\Cache;
+use Lsr\Caching\Redis\RedisJournal;
 use Lsr\Caching\Redis\RedisStorage;
-use Nette\Caching\Storages\Journal;
-use Nette\Caching\Storages\SQLiteJournal;
 use PHPUnit\Framework\TestCase;
 use Redis;
 
 class RedisStorageTest extends TestCase
 {
     private Redis $redis;
-    private Journal $journal;
+    private RedisJournal $journal;
     private RedisStorage $storage;
+    private string $namespace;
     /** @var callable(mixed $value):string */
     private $serialize;
 
     /** @var callable(string $serialized):mixed */
     private $unserialize;
 
-    public function __construct(string $name) {
+    protected function setUp(): void {
         if (extension_loaded('igbinary')) {
             $this->serialize = 'igbinary_serialize';
             $this->unserialize = 'igbinary_unserialize';
@@ -30,16 +30,29 @@ class RedisStorageTest extends TestCase
             $this->serialize = 'serialize';
             $this->unserialize = static fn(string $serialized) => unserialize($serialized, ['allowed_classes' => true]);
         }
-        parent::__construct($name);
+
+        $this->namespace = 'lsr-cache-storage-test:' . hash('sha256', $this->name()) . ':';
+        $this->redis = $this->createRedisConnection();
+        $this->journal = new RedisJournal($this->redis, $this->namespace);
+        $this->storage = new RedisStorage(
+            $this->redis,
+            $this->namespace,
+            $this->journal,
+        );
+    }
+
+    protected function tearDown(): void {
+        $this->storage->clean([Cache::All => true]);
+        $this->redis->close();
     }
 
     public function testRemove(): void {
         $value = ($this->serialize)(['data' => 'value']);
-        $this->redis->set('test-remove', $value);
+        $this->redis->set($this->storageKey('test-remove'), $value);
 
-        $this->assertEquals($value, $this->redis->get('test-remove'));
+        $this->assertEquals($value, $this->redis->get($this->storageKey('test-remove')));
         $this->storage->remove('test-remove');
-        $this->assertFalse($this->redis->get('test-remove'));
+        $this->assertFalse($this->redis->get($this->storageKey('test-remove')));
     }
 
     public function testCleanAll(): void {
@@ -50,14 +63,27 @@ class RedisStorageTest extends TestCase
             'test-clean-4' => 'value4',
         ];
         foreach ($data as $k => $v) {
-            $this->redis->set($k, ($this->serialize)(['data' => $v]));
+            $this->storage->write($k, $v, [Cache::Tags => ['full-clean']]);
         }
+        $unrelatedKey = $this->namespace . 'unrelated';
+        $otherDatabaseKey = $this->namespace . 'other-database';
+        $this->redis->set($unrelatedKey, 'keep');
+        $otherDatabase = $this->createRedisConnection();
+        $otherDatabase->select(1);
+        $otherDatabase->set($otherDatabaseKey, 'keep');
 
         $this->storage->clean([Cache::All => true]);
 
         foreach ($data as $k => $v) {
-            $this->assertFalse($this->redis->get($k));
+            $this->assertFalse($this->redis->get($this->storageKey($k)));
         }
+        self::assertSame('keep', $this->redis->get($unrelatedKey));
+        self::assertSame('keep', $otherDatabase->get($otherDatabaseKey));
+        self::assertSame([], $this->journal->clean([Cache::Tags => ['full-clean']]));
+
+        $this->redis->del($unrelatedKey);
+        $otherDatabase->del($otherDatabaseKey);
+        $otherDatabase->close();
     }
 
     public function testCleanTags(): void {
@@ -82,18 +108,15 @@ class RedisStorageTest extends TestCase
         $this->storage->clean([Cache::Tags => ['test-clean']]);
 
         foreach ($data as $k => $v) {
-            $this->assertFalse($this->redis->get($k));
+            $this->assertFalse($this->redis->get($this->storageKey($k)));
         }
         foreach ($data1 as $k => $v) {
-            $this->assertNotFalse($this->redis->get($k));
+            $this->assertNotFalse($this->redis->get($this->storageKey($k)));
         }
     }
 
     public function testRead(): void {
-        $this->redis->set(
-            'test-read',
-            ($this->serialize)(['data' => 'read']),
-        );
+        $this->storage->write('test-read', 'read', []);
 
         $data = $this->storage->read('test-read');
         $this->assertEquals('read', $data);
@@ -105,7 +128,7 @@ class RedisStorageTest extends TestCase
 
     public function testWrite(): void {
         $this->storage->write('test', 'test', []);
-        $data = $this->redis->get('test');
+        $data = $this->redis->get($this->storageKey('test'));
         $this->assertTrue(is_string($data));
         $read = ($this->unserialize)($data);
         $this->assertTrue(is_array($read));
@@ -115,7 +138,7 @@ class RedisStorageTest extends TestCase
 
     public function testWriteTags(): void {
         $this->storage->write('test-write-tag', 'test', [Cache::Tags => ['test']]);
-        $data = $this->redis->get('test-write-tag');
+        $data = $this->redis->get($this->storageKey('test-write-tag'));
         $this->assertTrue(is_string($data));
         $read = ($this->unserialize)($data);
         $this->assertTrue(is_array($read));
@@ -123,19 +146,19 @@ class RedisStorageTest extends TestCase
         $this->assertEquals('test', $read['data']);
 
         $keys = $this->journal->clean([Cache::Tags => ['test']]);
-        $this->assertEquals(['test-write-tag'], $keys);
+        $this->assertEqualsCanonicalizing([$this->storageKey('test-write-tag')], $keys);
     }
 
     public function testWriteExpire(): void {
         $this->storage->write('test-expire', 'test', [Cache::Expire => 1]);
-        $data = $this->redis->get('test-expire');
+        $data = $this->redis->get($this->storageKey('test-expire'));
         $this->assertTrue(is_string($data));
         $read = ($this->unserialize)($data);
         $this->assertTrue(is_array($read));
         $this->assertTrue(isset($read['data']));
         $this->assertEquals('test', $read['data']);
         sleep(1);
-        $this->assertFalse($this->redis->get('test-expire'));
+        $this->assertFalse($this->redis->get($this->storageKey('test-expire')));
     }
 
     public function testWriteExpireSliding(): void {
@@ -167,32 +190,42 @@ class RedisStorageTest extends TestCase
             'test-bread-4' => 'read4',
         ];
         foreach ($data as $k => $v) {
-            $this->redis->set($k, ($this->serialize)(['data' => $v]));
+            $this->storage->write($k, $v, []);
         }
 
         $read = $this->storage->bulkRead(array_keys($data));
         $this->assertEquals($data, $read);
     }
 
-    protected function setUp(): void {
-        $journalDb = TMP_DIR . 'journal-redis.db';
-        if (file_exists($journalDb)) {
-            unlink($journalDb);
-        }
-        touch($journalDb);
+    public function testTagCleanAfterRedisConnectionAndObjectRecreation(): void {
+        $this->storage->write('recreated-storage-key', 'value', [Cache::Tags => ['recreated-storage-tag']]);
+        $this->redis->close();
 
-        $this->journal = new SQLiteJournal($journalDb);
-        $this->redis = new Redis();
+        $this->redis = $this->createRedisConnection();
+        $this->journal = new RedisJournal($this->redis, $this->namespace);
+        $this->storage = new RedisStorage($this->redis, $this->namespace, $this->journal);
+        $this->storage->clean([Cache::Tags => ['recreated-storage-tag']]);
+
+        self::assertNull($this->storage->read('recreated-storage-key'));
+        self::assertSame([], $this->journal->clean([Cache::Tags => ['recreated-storage-tag']]));
+    }
+
+    private function createRedisConnection(): Redis {
         $redisHost = getenv('REDIS_HOST');
         if (!is_string($redisHost)) {
             $redisHost = '127.0.0.1';
         }
-        $this->redis->connect($redisHost);
-        $this->redis->flushAll();
-        $this->storage = new RedisStorage(
-            $this->redis,
-            '',
-            $this->journal,
-        );
+        $redisPort = getenv('REDIS_PORT');
+        if (!is_string($redisPort)) {
+            $redisPort = '6379';
+        }
+
+        $redis = new Redis();
+        $redis->connect($redisHost, (int) $redisPort);
+        return $redis;
+    }
+
+    private function storageKey(string $key): string {
+        return urlencode($this->namespace . $key);
     }
 }

@@ -55,7 +55,11 @@ trait CacheTestingTrait
             Cache::Tags => ['category', 'expensive']
         ]);
 
-        $this->assertSame($value, $this->cache->load($keyWithTags), 'The tagged item should be retrievable before cleaning.');
+        $this->assertSame(
+            $value,
+            $this->cache->load($keyWithTags),
+            'The tagged item should be retrievable before cleaning.',
+        );
 
         // Clean based on a tag
         $this->cache->clean([Cache::Tags => ['category']]);

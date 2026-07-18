@@ -1,4 +1,5 @@
 <?php
+
 /**
  * @author Tomáš Vojík <xvojik00@stud.fit.vutbr.cz>, <vojik@wboy.cz>
  */
@@ -13,18 +14,20 @@ final readonly class CacheTracyPanel implements IBarPanel
 {
     public function __construct(
         private Cache $cache
-    ){}
+    ) {
+    }
 
     /**
      * @inheritDoc
      */
-    public function getTab() : string {
+    public function getTab(): string {
         try {
             $calls = $this->cache->getCalls();
             $callsFormatted = sprintf(lang('%d call', '%d calls', $calls, 'debugPanel'), $calls);
         } catch (Exception) {
             $callsFormatted = lang('Invalid cache class', context: 'debugPanel');
         }
+        // phpcs:disable Generic.Files.LineLength.TooLong -- inline SVG path data is intentionally not wrapped.
         return <<<HTML
         <span title="Caching">
             <svg
@@ -55,12 +58,13 @@ final readonly class CacheTracyPanel implements IBarPanel
             <span class="tracy-label">$callsFormatted</span>
         </span>
         HTML;
+        // phpcs:enable Generic.Files.LineLength.TooLong
     }
 
     /**
      * @inheritDoc
      */
-    public function getPanel() : string {
+    public function getPanel(): string {
         try {
             $hits = $this->cache::$hit;
             $miss = $this->cache::$miss;
@@ -86,8 +90,8 @@ final readonly class CacheTracyPanel implements IBarPanel
                     <ul class="list-group">
         HTML;
         foreach ($loadedKeys as $key => [$count, $miss]) {
-            $panel .= '<li class="list-group-item"><strong>'.$count.'&times;</strong> '.$key.($miss > 0 ?
-                    '- '.$miss.'&times; miss' : '').'</li>';
+            $panel .= '<li class="list-group-item"><strong>' . $count . '&times;</strong> ' . $key . ($miss > 0 ?
+                    '- ' . $miss . '&times; miss' : '') . '</li>';
         }
         $panel .= <<<HTML
                     </ul>

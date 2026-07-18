@@ -1,4 +1,5 @@
 <?php
+
 declare(strict_types=1);
 
 namespace Lsr\Caching\DI;
@@ -20,8 +21,7 @@ use Nette\Utils\FileSystem;
  */
 class CacheExtension extends CompilerExtension
 {
-
-    public function getConfigSchema() : Nette\Schema\Schema {
+    public function getConfigSchema(): Nette\Schema\Schema {
         return Nette\Schema\Expect::structure(
             [
                 'cacheDir'    => Nette\Schema\Expect::string()->required(),
@@ -33,7 +33,7 @@ class CacheExtension extends CompilerExtension
         );
     }
 
-    public function loadConfiguration() : void {
+    public function loadConfiguration(): void {
         $cacheDir = $this->config->cacheDir;
         if (!FileSystem::isAbsolute($cacheDir)) {
             throw new InvalidArgumentException("Cache directory must be absolute, '$cacheDir' given.");
@@ -51,7 +51,7 @@ class CacheExtension extends CompilerExtension
                     ->setFactory(
                         SQLiteJournal::class,
                         [
-                            trailingSlashIt($cacheDir).$this->config->journalFile,
+                            trailingSlashIt($cacheDir) . $this->config->journalFile,
                         ]
                     );
         }
@@ -73,7 +73,7 @@ class CacheExtension extends CompilerExtension
                 ->setFactory(
                     Cache::class,
                     [
-                        '@'.$this->prefix('storage'),
+                        '@' . $this->prefix('storage'),
                         $this->config->namespace,
                         $this->config->debug,
                     ]
@@ -84,7 +84,7 @@ class CacheExtension extends CompilerExtension
             ->setFactory(
                 CacheTracyPanel::class,
                 [
-                    '@'.$this->name,
+                    '@' . $this->name,
                 ]
             );
     }

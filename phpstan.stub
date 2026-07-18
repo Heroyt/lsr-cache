@@ -1,0 +1,9 @@
+<?php
+
+function lang(
+    string $singular,
+    ?string $plural = null,
+    ?int $count = null,
+    ?string $context = null,
+): string {
+}

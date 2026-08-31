@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Lsr\Caching\DI;
 
 use Lsr\Caching\Cache;
+use Lsr\Caching\Commands\CacheCleanCommand;
 use Lsr\Caching\Tracy\CacheTracyPanel;
 use Nette;
 use Nette\Caching\Storage;
@@ -15,9 +16,17 @@ use Nette\DI\CompilerExtension;
 use Nette\InvalidArgumentException;
 use Nette\InvalidStateException;
 use Nette\Utils\FileSystem;
+use Symfony\Component\Console\Command\Command;
 
 /**
- * @property-read object{cacheDir:string,cacheFile:string,journalFile:string,debug:bool,namespace:string|null} $config
+ * @property-read object{
+ *     cacheDir:string,
+ *     cacheFile:string,
+ *     journalFile:string,
+ *     debug:bool,
+ *     namespace:string|null,
+ *     commands:bool
+ * } $config
  */
 class CacheExtension extends CompilerExtension
 {
@@ -29,6 +38,7 @@ class CacheExtension extends CompilerExtension
                 'journalFile' => Nette\Schema\Expect::string()->default('journal.db'),
                 'debug'       => Nette\Schema\Expect::bool()->default(false),
                 'namespace'       => Nette\Schema\Expect::string()->default(null),
+                'commands'    => Nette\Schema\Expect::bool()->default(true),
             ]
         );
     }
@@ -78,6 +88,12 @@ class CacheExtension extends CompilerExtension
                         $this->config->debug,
                     ]
                 );
+
+        if ($this->config->commands && class_exists(Command::class)) {
+            $builder->addDefinition($this->prefix('commands.clean'))
+                ->setFactory(CacheCleanCommand::class, ['@' . $this->name])
+                ->setTags(['lsr' => true, 'cache' => true, 'console.command' => true, 'command' => true]);
+        }
 
         $builder->addDefinition($this->prefix('tracyPanel'))
             ->setType(CacheTracyPanel::class)

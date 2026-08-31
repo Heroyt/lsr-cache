@@ -20,7 +20,8 @@
     "phpunit/phpunit": "^12",
     "phpstan/phpstan": "^2.0",
     "phpstan/extension-installer": "^1.2",
-    "squizlabs/php_codesniffer": "^4"
+    "squizlabs/php_codesniffer": "^4",
+    "symfony/console": "^8|^7"
   },
   "autoload": {
     "psr-4": {
@@ -46,6 +47,9 @@
     "nette/di": "^3.2",
     "tracy/tracy": "^2.10",
     "lsr/helpers": "^0.3"
+  },
+  "suggest": {
+    "lsr/console": "Loads the cache:clean command into the framework console."
   },
   "config": {
     "allow-plugins": {

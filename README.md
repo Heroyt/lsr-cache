@@ -29,6 +29,16 @@ empty, and a full clean therefore leaves them in place. If they must be purged, 
 during a maintenance window using application-specific knowledge or clear a genuinely dedicated
 Redis database. Do not use `FLUSHALL` on a shared instance.
 
+## Console command
+
+When Symfony Console is installed, `CacheExtension` registers `cache:clean` and its
+`cache:clear` alias as a DI command service. Use `--tag=<tag>` to clean only cache
+entries with that tag.
+
+`lsr/console` discovers every Symfony `Command` service in the compiled container,
+so other packages can use the same ownership pattern without changing `lsr/console`.
+Set `commands: false` in the cache extension configuration to disable registration.
+
 ## Redis integration tests
 
 The Redis tests use `REDIS_HOST` and `REDIS_PORT`, defaulting to `127.0.0.1:6379`:

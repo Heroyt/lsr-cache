@@ -2,6 +2,8 @@
 
 namespace Lsr\Caching;
 
+use Lsr\Caching\Lifecycle\CacheLifecycleHookInterface;
+use Lsr\Caching\Lifecycle\CacheLifecycleScopeInterface;
 use Nette\Caching\BulkReader;
 use Nette\Caching\Storage;
 use Nette\InvalidArgumentException;
@@ -29,12 +31,19 @@ class Cache extends \Nette\Caching\Cache
     /** @var array<string, array{0:int, 1:int}> */
     public static array $loadedKeys = [];
 
+    private ?CacheLifecycleHookInterface $lifecycleHook = null;
+
     public function __construct(
         Storage        $storage,
         ?string        $namespace = null,
         protected bool $debug = true,
     ) {
         parent::__construct($storage, $namespace);
+    }
+
+    public function setLifecycleHook(CacheLifecycleHookInterface $hook): static {
+        $this->lifecycleHook = $hook;
+        return $this;
     }
 
     /**
@@ -71,29 +80,52 @@ class Cache extends \Nette\Caching\Cache
             return $result;
         }
 
-        $storageKeys = array_map([$this, 'generateKey'], $keys);
-        $cacheData = $this->getStorage()->bulkRead($storageKeys);
-        foreach ($keys as $i => $key) {
-            $storageKey = $storageKeys[$i];
-            if (isset($cacheData[$storageKey])) {
-                $this->logLoadedKey($key);
-                self::$hit++;
-                $result[$key] = $cacheData[$storageKey];
-            } elseif ($generator) {
-                $this->logLoadedKey($key, true);
-                self::$miss++;
-                $result[$key] = $this->load(
-                    $key,
-                    fn (?array &$dependencies = null) => $generator($key, $dependencies)
-                );
-            } else {
-                $this->logLoadedKey($key, true);
-                self::$miss++;
-                $result[$key] = null;
-            }
-        }
+        $scope = $this->beginLifecycle('bulk_load', count($keys));
+        $hits = 0;
+        $misses = 0;
+        $generated = 0;
 
-        return $result;
+        try {
+            $storageKeys = array_map([$this, 'generateKey'], $keys);
+            $cacheData = $this->getStorage()->bulkRead($storageKeys);
+            foreach ($keys as $i => $key) {
+                $storageKey = $storageKeys[$i];
+                if (isset($cacheData[$storageKey])) {
+                    $this->logLoadedKey($key);
+                    self::$hit++;
+                    $hits++;
+                    $result[$key] = $cacheData[$storageKey];
+                } elseif ($generator) {
+                    $this->logLoadedKey($key, true);
+                    self::$miss++;
+                    $misses++;
+                    $ignoredHits = 0;
+                    $ignoredMisses = 0;
+                    $ignoredGenerated = 0;
+                    $result[$key] = $this->loadValue(
+                        $key,
+                        fn (?array &$dependencies = null) => $generator($key, $dependencies),
+                        null,
+                        $ignoredHits,
+                        $ignoredMisses,
+                        $ignoredGenerated,
+                    );
+                    $generated += $ignoredGenerated;
+                } else {
+                    $this->logLoadedKey($key, true);
+                    self::$miss++;
+                    $misses++;
+                    $result[$key] = null;
+                }
+            }
+
+            return $result;
+        } catch (Throwable $exception) {
+            $this->recordLifecycleException($scope, $exception);
+            throw $exception;
+        } finally {
+            $this->completeLifecycle($scope, $hits, $misses, $generated);
+        }
     }
 
     /**
@@ -107,29 +139,92 @@ class Cache extends \Nette\Caching\Cache
      * @return T
      */
     public function load(mixed $key, ?callable $generator = null, ?array $dependencies = null): mixed {
+        $scope = $this->beginLifecycle('load', 1);
+        $hits = 0;
+        $misses = 0;
+        $generated = 0;
+
+        try {
+            return $this->loadValue($key, $generator, $dependencies, $hits, $misses, $generated);
+        } catch (Throwable $exception) {
+            $this->recordLifecycleException($scope, $exception);
+            throw $exception;
+        } finally {
+            $this->completeLifecycle($scope, $hits, $misses, $generated);
+        }
+    }
+
+    /**
+     * @param null|callable(CacheDependencies|null &$dependencies=):mixed $generator
+     * @param CacheDependencies|null $dependencies
+     */
+    private function loadValue(
+        mixed $key,
+        ?callable $generator,
+        ?array $dependencies,
+        int &$hits,
+        int &$misses,
+        int &$generated,
+    ): mixed {
         $storageKey = $this->generateKey($key);
         $data = $this->getStorage()->read($storageKey);
         if ($data === null && $generator) {
             $this->logLoadedKey($key, true);
             self::$miss++;
+            $misses++;
+            $generated++;
             $this->getStorage()->lock($storageKey);
             try {
                 $dependencies ??= [];
                 $data = $generator($dependencies);
-            } catch (Throwable $e) {
+            } catch (Throwable $exception) {
                 $this->getStorage()->remove($storageKey);
-                throw $e;
+                throw $exception;
             }
 
             $this->save($key, $data, $dependencies);
-        } else if ($data !== null) {
+        } elseif ($data !== null) {
             $this->logLoadedKey($key);
             self::$hit++;
+            $hits++;
         } else {
             self::$miss++;
+            $misses++;
         }
 
         return $data;
+    }
+
+    private function beginLifecycle(string $operation, int $itemCount): ?CacheLifecycleScopeInterface {
+        try {
+            return $this->lifecycleHook?->begin($operation, $itemCount);
+        } catch (Throwable) {
+            return null;
+        }
+    }
+
+    private function recordLifecycleException(
+        ?CacheLifecycleScopeInterface $scope,
+        Throwable $exception,
+    ): void {
+        try {
+            $scope?->recordException($exception);
+        } catch (Throwable) {
+            // Lifecycle hooks must never affect cache operations.
+        }
+    }
+
+    private function completeLifecycle(
+        ?CacheLifecycleScopeInterface $scope,
+        int $hits,
+        int $misses,
+        int $generated,
+    ): void {
+        try {
+            $scope?->complete($hits, $misses, $generated);
+        } catch (Throwable) {
+            // Lifecycle hooks must never affect cache operations.
+        }
     }
 
     /**

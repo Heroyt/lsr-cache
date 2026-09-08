@@ -13,15 +13,16 @@
     "test": "XDEBUG_MODE=coverage ./vendor/bin/phpunit",
     "docs": "doxygen",
     "phpstan": "./vendor/bin/phpstan",
-    "phpcs": "./vendor/bin/phpcs",
-    "phpcbf": "./vendor/bin/phpcbf"
+    "cs:fix": "./vendor/bin/php-cs-fixer fix --config=.php-cs-fixer.php",
+    "cbf": "@cs:fix",
+    "cs": "./vendor/bin/php-cs-fixer fix --config=.php-cs-fixer.php --dry-run --diff"
   },
   "require-dev": {
     "roave/security-advisories": "dev-latest",
     "phpunit/phpunit": "^12",
     "phpstan/phpstan": "^2.0",
     "phpstan/extension-installer": "^1.2",
-    "squizlabs/php_codesniffer": "^4",
+    "friendsofphp/php-cs-fixer": "^3.95",
     "symfony/console": "^8|^7"
   },
   "autoload": {

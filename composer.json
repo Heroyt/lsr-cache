@@ -2,7 +2,7 @@
   "name": "lsr/caching",
   "license": "MIT",
   "description": "Laser framework core - Cache",
-  "version": "0.3.5",
+  "version": "0.3.6",
   "repositories": [
     {
       "type": "composer",

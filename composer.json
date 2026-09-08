@@ -1,5 +1,6 @@
 {
   "name": "lsr/cache",
+  "license": "MIT",
   "description": "Laser framework core - Cache",
   "version": "0.3.5",
   "repositories": [

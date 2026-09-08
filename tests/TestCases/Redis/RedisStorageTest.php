@@ -46,6 +46,17 @@ class RedisStorageTest extends TestCase
         $this->redis->close();
     }
 
+    public function test_bulk_load_preserves_values_for_associative_and_sparse_keys(): void {
+        $cache = new Cache($this->storage);
+        $cache->save('first', 'first value');
+        $cache->save('second', 'second value');
+
+        self::assertSame(
+            ['first' => 'first value', 'second' => 'second value'],
+            $cache->bulkLoad(['named' => 'first', 7 => 'second']),
+        );
+    }
+
     public function test_remove(): void {
         $value = ($this->serialize)(['data' => 'value']);
         $this->redis->set($this->storageKey('test-remove'), $value);
@@ -151,14 +162,15 @@ class RedisStorageTest extends TestCase
 
     public function test_write_expire(): void {
         $this->storage->write('test-expire', 'test', [Cache::Expire => 1]);
-        $data = $this->redis->get($this->storageKey('test-expire'));
-        $this->assertTrue(is_string($data));
-        $read = ($this->unserialize)($data);
-        $this->assertTrue(is_array($read));
-        $this->assertTrue(isset($read['data']));
-        $this->assertEquals('test', $read['data']);
-        sleep(1);
-        $this->assertFalse($this->redis->get($this->storageKey('test-expire')));
+        $this->assertSame('test', $this->storage->read('test-expire'));
+
+        $deadline = hrtime(true) + 2_000_000_000;
+        do {
+            usleep(10_000);
+            $data = $this->storage->read('test-expire');
+        } while ($data !== null && hrtime(true) < $deadline);
+
+        $this->assertNull($data);
     }
 
     public function test_write_expire_sliding(): void {

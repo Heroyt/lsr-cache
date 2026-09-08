@@ -2,8 +2,6 @@
 
 declare(strict_types=1);
 
-// phpcs:disable PSR1.Files.SideEffects.FoundWithSymbols -- test bootstrap defines constants and initializes fixtures.
-
 define('ROOT', dirname(__DIR__) . '/');
 const PRIVATE_DIR = ROOT . 'tests/private/';
 const TMP_DIR = ROOT . 'tests/tmp/';

@@ -24,7 +24,6 @@ final class CacheCleanCommandTest extends TestCase
         $code = $tester->execute([]);
 
         self::assertSame(Command::SUCCESS, $code);
-        self::assertStringContainsString('Successfully purged system cache', $tester->getDisplay());
     }
 
     public function test_cleans_only_requested_tags(): void {

@@ -109,7 +109,7 @@ class RedisJournalTest extends TestCase
         $otherJournal->clean([Cache::All => true]);
     }
 
-    #[Depends('testWrite')]
+    #[Depends('test_write')]
     public function test_clean(): void {
         $data = [
             'testWriteClean1',
@@ -130,7 +130,7 @@ class RedisJournalTest extends TestCase
         $this->assertEqualsCanonicalizing($data, $keys);
     }
 
-    #[Depends('testWritePriority')]
+    #[Depends('test_write_priority')]
     public function test_clean_priority(): void {
         $data = [
             'testWriteCleanPriority1',

@@ -29,7 +29,6 @@ final readonly class CacheTracyPanel implements IBarPanel
         } catch (Exception) {
             $callsFormatted = lang('Invalid cache class', context: 'debugPanel');
         }
-        // phpcs:disable Generic.Files.LineLength.TooLong -- inline SVG path data is intentionally not wrapped.
         return <<<HTML
         <span title="Caching">
             <svg
@@ -60,7 +59,6 @@ final readonly class CacheTracyPanel implements IBarPanel
             <span class="tracy-label">{$callsFormatted}</span>
         </span>
         HTML;
-        // phpcs:enable Generic.Files.LineLength.TooLong
     }
 
     /**

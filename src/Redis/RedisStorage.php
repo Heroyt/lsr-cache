@@ -76,7 +76,7 @@ class RedisStorage implements Storage, BulkReader
             return null;
         }
 
-        /** @var array{data: mixed, delta: int, callbacks: callable[]} $data */
+        /** @var array{data: mixed, delta?: int, callbacks?: list<array{0: callable, 1?: mixed, 2?: mixed}>} $data */
         $data = ($this->unserialize)($meta);
 
         // verify dependencies
@@ -102,8 +102,8 @@ class RedisStorage implements Storage, BulkReader
     /**
      * @inheritDoc
      *
-     * @param  array{items?: string[], cache?: string, callbacks?: callable[], tags?: string[], priority?: int,
-     *   sliding?: bool, files?: string[]|string,expire?:string|numeric}  $dependencies
+     * @param  array{items?: string[], cache?: string, callbacks?: list<array{0: callable, 1?: mixed, 2?: mixed}>,
+     *   tags?: string[], priority?: int, sliding?: bool, files?: string[]|string,expire?:string|numeric}  $dependencies
      */
     public function write(string $key, mixed $data, array $dependencies): void {
         if (isset($dependencies[Cache::Items])) {
@@ -195,7 +195,7 @@ class RedisStorage implements Storage, BulkReader
         $deleteKeys = [];
         foreach ($metas as $key => $meta) {
             $prefixedKey = $prefixedKeys[$key];
-            /** @var array{data: mixed, delta: int, callbacks: callable[]} $data */
+            /** @var array{data: mixed, delta?: int, callbacks?: list<array{0: callable, 1?: mixed, 2?: mixed}>} $data */
             $data = ($this->unserialize)($meta);
             if ( ! empty($data[self::META_CALLBACKS]) && ! Cache::checkCallbacks($data[self::META_CALLBACKS])) {
                 $deleteKeys[] = $prefixedKey;

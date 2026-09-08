@@ -22,7 +22,7 @@ use Throwable;
  *     files?:non-empty-string[],
  *     items?:non-empty-string[],
  *     consts?:non-empty-string[],
- *     callbacks?:callable[],
+ *     callbacks?:list<array{0:callable, 1?:mixed, 2?:mixed}>,
  *     namespaces?:non-empty-string[],
  *     }
  */

@@ -89,7 +89,7 @@ class Cache extends \Nette\Caching\Cache
 
         try {
             $storageKeys = array_map([$this, 'generateKey'], $keys);
-            $cacheData = $this->getStorage()->bulkRead($storageKeys);
+            $cacheData = $this->getStorage()->bulkRead(array_values($storageKeys));
             foreach ($keys as $i => $key) {
                 $storageKey = $storageKeys[$i];
                 if (isset($cacheData[$storageKey])) {

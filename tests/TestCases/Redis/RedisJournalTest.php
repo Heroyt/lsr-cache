@@ -19,11 +19,11 @@ class RedisJournalTest extends TestCase
     protected function setUp(): void {
         $this->redis = new Redis();
         $redisHost = getenv('REDIS_HOST');
-        if (!is_string($redisHost)) {
+        if ( ! is_string($redisHost)) {
             $redisHost = '127.0.0.1';
         }
         $redisPort = getenv('REDIS_PORT');
-        if (!is_string($redisPort)) {
+        if ( ! is_string($redisPort)) {
             $redisPort = '6379';
         }
         $this->redis->connect($redisHost, (int) $redisPort);
@@ -36,7 +36,7 @@ class RedisJournalTest extends TestCase
         $this->redis->close();
     }
 
-    public function testTagCleanRemovesAllDependenciesForSelectedKeys(): void {
+    public function test_tag_clean_removes_all_dependencies_for_selected_keys(): void {
         $this->journal->write('tag-clean-key', [
             Cache::Tags => ['tag-clean-trigger', 'tag-clean-related'],
             Cache::Priority => 10,
@@ -58,7 +58,7 @@ class RedisJournalTest extends TestCase
         self::assertSame(['shared-tag-key'], $this->journal->clean([Cache::Tags => ['tag-clean-related']]));
     }
 
-    public function testPriorityCleanRemovesAllDependenciesForSelectedKeys(): void {
+    public function test_priority_clean_removes_all_dependencies_for_selected_keys(): void {
         $this->journal->write('priority-clean-key', [
             Cache::Tags => ['priority-clean-tag'],
             Cache::Priority => 10,
@@ -79,7 +79,7 @@ class RedisJournalTest extends TestCase
         self::assertSame(['priority-survivor-key'], $this->journal->clean([Cache::Tags => ['priority-clean-tag']]));
     }
 
-    public function testCleanAfterRedisConnectionAndObjectRecreation(): void {
+    public function test_clean_after_redis_connection_and_object_recreation(): void {
         $this->journal->write('recreated-key', [
             Cache::Tags => ['recreated-tag'],
             Cache::Priority => 10,
@@ -93,7 +93,7 @@ class RedisJournalTest extends TestCase
         self::assertSame([], $this->journal->clean([Cache::Priority => 10]));
     }
 
-    public function testFullCleanOnlyRemovesSelectedJournalNamespace(): void {
+    public function test_full_clean_only_removes_selected_journal_namespace(): void {
         $otherNamespace = $this->namespace . 'other:';
         $otherJournal = new RedisJournal($this->redis, $otherNamespace);
         $this->journal->write('own-key', [Cache::Tags => ['shared-name']]);
@@ -110,7 +110,7 @@ class RedisJournalTest extends TestCase
     }
 
     #[Depends('testWrite')]
-    public function testClean(): void {
+    public function test_clean(): void {
         $data = [
             'testWriteClean1',
             'testWriteClean2',
@@ -122,7 +122,7 @@ class RedisJournalTest extends TestCase
                 $value,
                 [
                     Cache::Tags => ['clean'],
-                ]
+                ],
             );
         }
 
@@ -131,7 +131,7 @@ class RedisJournalTest extends TestCase
     }
 
     #[Depends('testWritePriority')]
-    public function testCleanPriority(): void {
+    public function test_clean_priority(): void {
         $data = [
             'testWriteCleanPriority1',
             'testWriteCleanPriority2',
@@ -143,7 +143,7 @@ class RedisJournalTest extends TestCase
                 $value,
                 [
                     Cache::Priority => $key + 1,
-                ]
+                ],
             );
         }
 
@@ -151,7 +151,7 @@ class RedisJournalTest extends TestCase
         $this->assertEqualsCanonicalizing(array_slice($data, 0, 3), $keys);
     }
 
-    public function testWrite(): void {
+    public function test_write(): void {
         $data = [
             'testWrite1',
             'testWrite2',
@@ -163,7 +163,7 @@ class RedisJournalTest extends TestCase
                 $value,
                 [
                     Cache::Tags => ['tag1', 'tag2'],
-                ]
+                ],
             );
         }
 
@@ -171,7 +171,7 @@ class RedisJournalTest extends TestCase
         $this->assertEqualsCanonicalizing($data, $keys);
     }
 
-    public function testWritePriority(): void {
+    public function test_write_priority(): void {
         $data = [
             'testWritePriority1',
             'testWritePriority2',
@@ -183,7 +183,7 @@ class RedisJournalTest extends TestCase
                 $value,
                 [
                     Cache::Priority => $key + 1,
-                ]
+                ],
             );
         }
 
@@ -193,11 +193,11 @@ class RedisJournalTest extends TestCase
 
     private function createRedisConnection(): Redis {
         $redisHost = getenv('REDIS_HOST');
-        if (!is_string($redisHost)) {
+        if ( ! is_string($redisHost)) {
             $redisHost = '127.0.0.1';
         }
         $redisPort = getenv('REDIS_PORT');
-        if (!is_string($redisPort)) {
+        if ( ! is_string($redisPort)) {
             $redisPort = '6379';
         }
 

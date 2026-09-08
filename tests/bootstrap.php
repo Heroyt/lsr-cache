@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 // phpcs:disable PSR1.Files.SideEffects.FoundWithSymbols -- test bootstrap defines constants and initializes fixtures.
 
 define('ROOT', dirname(__DIR__) . '/');
@@ -16,8 +18,8 @@ const ASSETS_DIR = ROOT . 'assets/';
 
 ini_set('open_basedir', ROOT);
 
-if (!file_exists(TMP_DIR) && !mkdir(TMP_DIR) && !is_dir(TMP_DIR)) {
-    throw new Exception('Cannot create temporary directory: ' . TMP_DIR);
+if ( ! file_exists(TMP_DIR) && ! mkdir(TMP_DIR) && ! is_dir(TMP_DIR)) {
+    throw new \Exception('Cannot create temporary directory: ' . TMP_DIR);
 }
 
 require_once ROOT . 'vendor/autoload.php';

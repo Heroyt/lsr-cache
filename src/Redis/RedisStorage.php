@@ -37,7 +37,7 @@ class RedisStorage implements Storage, BulkReader
         private readonly string   $prefix = '',
         private readonly ?Journal $journal = null,
     ) {
-        if (!static::isAvailable()) {
+        if ( ! static::isAvailable()) {
             throw new NotSupportedException("PHP extension 'redis' is not loaded.");
         }
 
@@ -47,7 +47,7 @@ class RedisStorage implements Storage, BulkReader
             $this->unserialize = 'igbinary_unserialize';
         } else {
             $this->serialize = 'serialize';
-            $this->unserialize = static fn(string $serialized) => unserialize($serialized, ['allowed_classes' => true]);
+            $this->unserialize = static fn (string $serialized) => unserialize($serialized, ['allowed_classes' => true]);
         }
 
         $this->keyIndex = self::KEY_INDEX_PREFIX . hash('sha256', $this->prefix);
@@ -80,13 +80,13 @@ class RedisStorage implements Storage, BulkReader
         $data = ($this->unserialize)($meta);
 
         // verify dependencies
-        if (!empty($data[self::META_CALLBACKS]) && !Cache::checkCallbacks($data[self::META_CALLBACKS])) {
+        if ( ! empty($data[self::META_CALLBACKS]) && ! Cache::checkCallbacks($data[self::META_CALLBACKS])) {
             $this->redis->del($key);
             $this->redis->sRem($this->keyIndex, $key);
             return null;
         }
 
-        if (!empty($data[self::META_DELTA])) {
+        if ( ! empty($data[self::META_DELTA])) {
             $this->redis->setex($key, $data[self::META_DELTA], $meta);
         }
 
@@ -117,7 +117,7 @@ class RedisStorage implements Storage, BulkReader
         $expire = 0;
         if (isset($dependencies[Cache::Expire])) {
             $expire = (int) $dependencies[Cache::Expire];
-            if (!empty($dependencies[Cache::Sliding])) {
+            if ( ! empty($dependencies[Cache::Sliding])) {
                 $meta[self::META_DELTA] = $expire; // sliding time
             }
         }
@@ -127,7 +127,7 @@ class RedisStorage implements Storage, BulkReader
         }
 
         if (isset($dependencies[Cache::Tags]) || isset($dependencies[Cache::Priority])) {
-            if (!$this->journal) {
+            if ( ! $this->journal) {
                 throw new InvalidStateException('CacheJournal has not been provided.');
             }
 
@@ -160,9 +160,9 @@ class RedisStorage implements Storage, BulkReader
      * @param  array{all?: bool, tags?: string[], priority?: float}  $conditions
      */
     public function clean(array $conditions): void {
-        if (!empty($conditions[Cache::All])) {
+        if ( ! empty($conditions[Cache::All])) {
             $keys = $this->redis->sMembers($this->keyIndex);
-            if (is_array($keys) && !empty($keys)) {
+            if (is_array($keys) && ! empty($keys)) {
                 $this->redis->del(...$keys);
             }
             $this->redis->del($this->keyIndex);
@@ -187,7 +187,7 @@ class RedisStorage implements Storage, BulkReader
      * @return array<string, mixed> key => value pairs, missing items are omitted
      */
     public function bulkRead(array $keys): array {
-        $prefixedKeys = array_map(fn($key) => urlencode($this->prefix . $key), $keys);
+        $prefixedKeys = array_map(fn ($key) => urlencode($this->prefix . $key), $keys);
         $keys = array_combine($prefixedKeys, $keys);
         /** @var array<string,string> $metas */
         $metas = $this->redis->mGet($prefixedKeys);
@@ -197,18 +197,18 @@ class RedisStorage implements Storage, BulkReader
             $prefixedKey = $prefixedKeys[$key];
             /** @var array{data: mixed, delta: int, callbacks: callable[]} $data */
             $data = ($this->unserialize)($meta);
-            if (!empty($data[self::META_CALLBACKS]) && !Cache::checkCallbacks($data[self::META_CALLBACKS])) {
+            if ( ! empty($data[self::META_CALLBACKS]) && ! Cache::checkCallbacks($data[self::META_CALLBACKS])) {
                 $deleteKeys[] = $prefixedKey;
             } else {
                 $result[$keys[$prefixedKey]] = $data[self::META_DATA];
             }
 
-            if (!empty($data[self::META_DELTA])) {
+            if ( ! empty($data[self::META_DELTA])) {
                 $this->redis->setex($prefixedKey, $data[self::META_DELTA], $meta);
             }
         }
 
-        if (!empty($deleteKeys)) {
+        if ( ! empty($deleteKeys)) {
             $this->redis->del(...$deleteKeys);
             $this->redis->sRem($this->keyIndex, ...$deleteKeys);
         }

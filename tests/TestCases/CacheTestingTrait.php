@@ -52,7 +52,7 @@ trait CacheTestingTrait
 
         // Save an item with tags
         $this->cache->save($keyWithTags, $value, [
-            Cache::Tags => ['category', 'expensive']
+            Cache::Tags => ['category', 'expensive'],
         ]);
 
         $this->assertSame(
@@ -71,7 +71,7 @@ trait CacheTestingTrait
         $items = [
             'bLoad-key1' => 'bLoad-value1',
             'bLoad-key2' => 'bLoad-value2',
-            'bLoad-key3' => 'bLoad-value3'
+            'bLoad-key3' => 'bLoad-value3',
         ];
 
         // Save items individually first
@@ -83,7 +83,7 @@ trait CacheTestingTrait
         $loaded = $this->cache->bulkLoad(array_keys($items));
         $this->assertCount(count($items), $loaded, 'Loaded array should have all requested keys.');
         foreach ($items as $k => $v) {
-            $this->assertSame($v, $loaded[$k], "The bulk loaded value for $k should match the saved value.");
+            $this->assertSame($v, $loaded[$k], "The bulk loaded value for {$k} should match the saved value.");
         }
 
         // Test bulk loading with a missing key
@@ -121,7 +121,7 @@ trait CacheTestingTrait
         $items = [
             'bulk-key1' => 'bulk-value1',
             'bulk-key2' => 'bulk-value2',
-            'bulk-key3' => 'bulk-value3'
+            'bulk-key3' => 'bulk-value3',
         ];
 
         // Bulk save items
@@ -129,7 +129,7 @@ trait CacheTestingTrait
 
         // Verify that all items are present
         foreach ($items as $k => $v) {
-            $this->assertSame($v, $this->cache->load($k), "The item $k should match its bulk saved value.");
+            $this->assertSame($v, $this->cache->load($k), "The item {$k} should match its bulk saved value.");
         }
     }
 
@@ -165,18 +165,18 @@ trait CacheTestingTrait
 
     public function testLoadWithGenerator(): void {
         $val = uniqid('', true);
-        $load = $this->cache->load('gen-1', static fn() => $val);
+        $load = $this->cache->load('gen-1', static fn () => $val);
         $this->assertSame($val, $load);
-        $load = $this->cache->load('gen-1', static fn() => 'different value');
+        $load = $this->cache->load('gen-1', static fn () => 'different value');
         $this->assertSame($val, $load);
     }
 
     public function testBulkLoadWithGenerator(): void {
         $val = uniqid('', true);
-        $load = $this->cache->bulkLoad(['gen-1'], static fn() => $val);
+        $load = $this->cache->bulkLoad(['gen-1'], static fn () => $val);
         $this->assertTrue(isset($load['gen-1']));
         $this->assertSame($val, $load['gen-1']);
-        $load = $this->cache->bulkLoad(['gen-1'], static fn() => 'different value');
+        $load = $this->cache->bulkLoad(['gen-1'], static fn () => 'different value');
         $this->assertTrue(isset($load['gen-1']));
         $this->assertSame($val, $load['gen-1']);
     }

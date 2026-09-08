@@ -11,11 +11,11 @@ use PHPUnit\Framework\TestCase;
 
 final class CacheLifecycleTest extends TestCase
 {
-    public function testLoadReportsGeneratedValueAndSubsequentHit(): void {
+    public function test_load_reports_generated_value_and_subsequent_hit(): void {
         $hook = new RecordingCacheLifecycleHook();
         $cache = (new Cache(new MemoryStorage()))->setLifecycleHook($hook);
 
-        self::assertSame('value', $cache->load('private-key', static fn(): string => 'value'));
+        self::assertSame('value', $cache->load('private-key', static fn (): string => 'value'));
         self::assertSame('value', $cache->load('private-key'));
 
         self::assertSame([
@@ -28,7 +28,7 @@ final class CacheLifecycleTest extends TestCase
         ], $hook->completions);
     }
 
-    public function testBulkLoadReportsGeneratedValuesAndSubsequentHits(): void {
+    public function test_bulk_load_reports_generated_values_and_subsequent_hits(): void {
         $hook = new RecordingCacheLifecycleHook();
         $cache = (new Cache(new SQLiteStorage(':memory:')))->setLifecycleHook($hook);
 
@@ -36,7 +36,7 @@ final class CacheLifecycleTest extends TestCase
             ['first' => 'first-value', 'second' => 'second-value'],
             $cache->bulkLoad(
                 ['first', 'second'],
-                static fn(string $key): string => $key . '-value',
+                static fn (string $key): string => $key . '-value',
             ),
         );
         self::assertSame(
@@ -54,11 +54,11 @@ final class CacheLifecycleTest extends TestCase
         ], $hook->completions);
     }
 
-    public function testHookFailureDoesNotAffectCacheResult(): void {
+    public function test_hook_failure_does_not_affect_cache_result(): void {
         $hook = new RecordingCacheLifecycleHook();
         $hook->failBegin = true;
         $cache = (new Cache(new MemoryStorage()))->setLifecycleHook($hook);
 
-        self::assertSame('value', $cache->load('key', static fn(): string => 'value'));
+        self::assertSame('value', $cache->load('key', static fn (): string => 'value'));
     }
 }

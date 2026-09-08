@@ -22,7 +22,7 @@ final class CacheCommandRegistrationTest extends TestCase
         FileSystem::delete($this->directory);
     }
 
-    public function testDeclaresCommandWhenConsoleSupportIsAvailable(): void {
+    public function test_declares_command_when_console_support_is_available(): void {
         $compiler = new Compiler();
         $compiler->addExtension('cache', new CacheExtension());
         $compiler->addConfig([
@@ -37,11 +37,11 @@ final class CacheCommandRegistrationTest extends TestCase
         self::assertTrue(
             $compiler->getContainerBuilder()
                 ->getDefinition('cache.commands.clean')
-                ->getTag('console.command')
+                ->getTag('console.command'),
         );
     }
 
-    public function testCommandDeclarationCanBeDisabled(): void {
+    public function test_command_declaration_can_be_disabled(): void {
         $compiler = new Compiler();
         $compiler->addExtension('cache', new CacheExtension());
         $compiler->addConfig([

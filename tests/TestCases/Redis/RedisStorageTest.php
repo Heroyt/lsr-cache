@@ -28,7 +28,7 @@ class RedisStorageTest extends TestCase
             $this->unserialize = 'igbinary_unserialize';
         } else {
             $this->serialize = 'serialize';
-            $this->unserialize = static fn(string $serialized) => unserialize($serialized, ['allowed_classes' => true]);
+            $this->unserialize = static fn (string $serialized) => unserialize($serialized, ['allowed_classes' => true]);
         }
 
         $this->namespace = 'lsr-cache-storage-test:' . hash('sha256', $this->name()) . ':';
@@ -46,7 +46,7 @@ class RedisStorageTest extends TestCase
         $this->redis->close();
     }
 
-    public function testRemove(): void {
+    public function test_remove(): void {
         $value = ($this->serialize)(['data' => 'value']);
         $this->redis->set($this->storageKey('test-remove'), $value);
 
@@ -55,7 +55,7 @@ class RedisStorageTest extends TestCase
         $this->assertFalse($this->redis->get($this->storageKey('test-remove')));
     }
 
-    public function testCleanAll(): void {
+    public function test_clean_all(): void {
         $data = [
             'test-clean-1' => 'value1',
             'test-clean-2' => 'value2',
@@ -86,7 +86,7 @@ class RedisStorageTest extends TestCase
         $otherDatabase->close();
     }
 
-    public function testCleanTags(): void {
+    public function test_clean_tags(): void {
         $data = [
             'test-clean-tags-1' => 'value1',
             'test-clean-tags-2' => 'value2',
@@ -115,18 +115,18 @@ class RedisStorageTest extends TestCase
         }
     }
 
-    public function testRead(): void {
+    public function test_read(): void {
         $this->storage->write('test-read', 'read', []);
 
         $data = $this->storage->read('test-read');
         $this->assertEquals('read', $data);
     }
 
-    public function testReadEmpty(): void {
+    public function test_read_empty(): void {
         $this->assertNull($this->storage->read('test-read-invalid'));
     }
 
-    public function testWrite(): void {
+    public function test_write(): void {
         $this->storage->write('test', 'test', []);
         $data = $this->redis->get($this->storageKey('test'));
         $this->assertTrue(is_string($data));
@@ -136,7 +136,7 @@ class RedisStorageTest extends TestCase
         $this->assertEquals('test', $read['data']);
     }
 
-    public function testWriteTags(): void {
+    public function test_write_tags(): void {
         $this->storage->write('test-write-tag', 'test', [Cache::Tags => ['test']]);
         $data = $this->redis->get($this->storageKey('test-write-tag'));
         $this->assertTrue(is_string($data));
@@ -149,7 +149,7 @@ class RedisStorageTest extends TestCase
         $this->assertEqualsCanonicalizing([$this->storageKey('test-write-tag')], $keys);
     }
 
-    public function testWriteExpire(): void {
+    public function test_write_expire(): void {
         $this->storage->write('test-expire', 'test', [Cache::Expire => 1]);
         $data = $this->redis->get($this->storageKey('test-expire'));
         $this->assertTrue(is_string($data));
@@ -161,7 +161,7 @@ class RedisStorageTest extends TestCase
         $this->assertFalse($this->redis->get($this->storageKey('test-expire')));
     }
 
-    public function testWriteExpireSliding(): void {
+    public function test_write_expire_sliding(): void {
         $this->storage->write('test-expire-sliding', 'test', [Cache::Expire => 2, Cache::Sliding => true]);
         $data = $this->storage->read('test-expire-sliding');
         $this->assertTrue(is_string($data));
@@ -182,7 +182,7 @@ class RedisStorageTest extends TestCase
         $this->assertNull($this->storage->read('test-expire-sliding'));
     }
 
-    public function testBulkRead(): void {
+    public function test_bulk_read(): void {
         $data = [
             'test-bread-1' => 'read1',
             'test-bread-2' => 'read2',
@@ -197,7 +197,7 @@ class RedisStorageTest extends TestCase
         $this->assertEquals($data, $read);
     }
 
-    public function testTagCleanAfterRedisConnectionAndObjectRecreation(): void {
+    public function test_tag_clean_after_redis_connection_and_object_recreation(): void {
         $this->storage->write('recreated-storage-key', 'value', [Cache::Tags => ['recreated-storage-tag']]);
         $this->redis->close();
 
@@ -212,11 +212,11 @@ class RedisStorageTest extends TestCase
 
     private function createRedisConnection(): Redis {
         $redisHost = getenv('REDIS_HOST');
-        if (!is_string($redisHost)) {
+        if ( ! is_string($redisHost)) {
             $redisHost = '127.0.0.1';
         }
         $redisPort = getenv('REDIS_PORT');
-        if (!is_string($redisPort)) {
+        if ( ! is_string($redisPort)) {
             $redisPort = '6379';
         }
 

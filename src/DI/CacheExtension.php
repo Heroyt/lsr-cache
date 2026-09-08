@@ -39,36 +39,36 @@ class CacheExtension extends CompilerExtension
                 'debug'       => Nette\Schema\Expect::bool()->default(false),
                 'namespace'       => Nette\Schema\Expect::string()->default(null),
                 'commands'    => Nette\Schema\Expect::bool()->default(true),
-            ]
+            ],
         );
     }
 
     public function loadConfiguration(): void {
         $cacheDir = $this->config->cacheDir;
-        if (!FileSystem::isAbsolute($cacheDir)) {
-            throw new InvalidArgumentException("Cache directory must be absolute, '$cacheDir' given.");
+        if ( ! FileSystem::isAbsolute($cacheDir)) {
+            throw new InvalidArgumentException("Cache directory must be absolute, '{$cacheDir}' given.");
         }
         FileSystem::createDir($cacheDir);
-        if (!is_writable($cacheDir)) {
-            throw new InvalidStateException("Make directory '$cacheDir' writable.");
+        if ( ! is_writable($cacheDir)) {
+            throw new InvalidStateException("Make directory '{$cacheDir}' writable.");
         }
 
         $builder = $this->getContainerBuilder();
 
         if (extension_loaded('pdo_sqlite')) {
             $builder->addDefinition($this->prefix('journal'))
-                    ->setType(Journal::class)
-                    ->setFactory(
-                        SQLiteJournal::class,
-                        [
-                            trailingSlashIt($cacheDir) . $this->config->journalFile,
-                        ]
-                    );
+                ->setType(Journal::class)
+                ->setFactory(
+                    SQLiteJournal::class,
+                    [
+                        trailingSlashIt($cacheDir) . $this->config->journalFile,
+                    ],
+                );
         }
 
         $builder->addDefinition($this->prefix('storage'))
-                ->setType(Storage::class)
-                ->setFactory(FileStorage::class, [$cacheDir]);
+            ->setType(Storage::class)
+            ->setFactory(FileStorage::class, [$cacheDir]);
 
         if ($this->name === 'cache') {
             if (extension_loaded('pdo_sqlite')) {
@@ -79,15 +79,15 @@ class CacheExtension extends CompilerExtension
         }
 
         $builder->addDefinition($this->name)
-                ->setType(Cache::class)
-                ->setFactory(
-                    Cache::class,
-                    [
-                        '@' . $this->prefix('storage'),
-                        $this->config->namespace,
-                        $this->config->debug,
-                    ]
-                );
+            ->setType(Cache::class)
+            ->setFactory(
+                Cache::class,
+                [
+                    '@' . $this->prefix('storage'),
+                    $this->config->namespace,
+                    $this->config->debug,
+                ],
+            );
 
         if ($this->config->commands && class_exists(Command::class)) {
             $builder->addDefinition($this->prefix('commands.clean'))
@@ -101,7 +101,7 @@ class CacheExtension extends CompilerExtension
                 CacheTracyPanel::class,
                 [
                     '@' . $this->name,
-                ]
+                ],
             );
     }
 }

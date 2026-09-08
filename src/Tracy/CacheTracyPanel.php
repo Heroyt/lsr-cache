@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /**
  * @author Tomáš Vojík <xvojik00@stud.fit.vutbr.cz>, <vojik@wboy.cz>
  */
@@ -13,7 +15,7 @@ use Tracy\IBarPanel;
 final readonly class CacheTracyPanel implements IBarPanel
 {
     public function __construct(
-        private Cache $cache
+        private Cache $cache,
     ) {
     }
 
@@ -55,7 +57,7 @@ final readonly class CacheTracyPanel implements IBarPanel
                                                                      fill="#ff9100"
                                                                      data-original="#ff9100"></path></g></g>
             </svg>
-            <span class="tracy-label">$callsFormatted</span>
+            <span class="tracy-label">{$callsFormatted}</span>
         </span>
         HTML;
         // phpcs:enable Generic.Files.LineLength.TooLong
@@ -80,8 +82,8 @@ final readonly class CacheTracyPanel implements IBarPanel
         <div class="tracy-inner">
             <div class="tracy-inner-container">
                 <div class="p-3 my-2 rounded border">
-                    <p><strong>Cache hits:</strong> $hits</p>
-                    <p><strong>Cache miss:</strong> $miss</p>
+                    <p><strong>Cache hits:</strong> {$hits}</p>
+                    <p><strong>Cache miss:</strong> {$miss}</p>
                 </div>
             </div>
             <div class="tracy-inner-container">

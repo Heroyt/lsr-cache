@@ -14,7 +14,7 @@ use Symfony\Component\Console\Tester\CommandTester;
 
 final class CacheCleanCommandTest extends TestCase
 {
-    public function testCleansTheEntireConfiguredCache(): void {
+    public function test_cleans_the_entire_configured_cache(): void {
         $storage = $this->createMock(Storage::class);
         $storage->expects(self::once())
             ->method('clean')
@@ -27,7 +27,7 @@ final class CacheCleanCommandTest extends TestCase
         self::assertStringContainsString('Successfully purged system cache', $tester->getDisplay());
     }
 
-    public function testCleansOnlyRequestedTags(): void {
+    public function test_cleans_only_requested_tags(): void {
         $storage = $this->createMock(Storage::class);
         $storage->expects(self::once())
             ->method('clean')

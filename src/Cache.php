@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Lsr\Caching;
 
 use Lsr\Caching\Lifecycle\CacheLifecycleHookInterface;
@@ -62,18 +64,18 @@ class Cache extends \Nette\Caching\Cache
         }
 
         /** @phpstan-ignore function.alreadyNarrowedType */
-        if (!array_all($keys, static fn($key) => is_scalar($key))) {
+        if ( ! array_all($keys, static fn ($key) => is_scalar($key))) {
             throw new InvalidArgumentException('Only scalar keys are allowed in bulkLoad()');
         }
 
         $result = [];
-        if (!$this->getStorage() instanceof BulkReader) {
+        if ( ! $this->getStorage() instanceof BulkReader) {
             foreach ($keys as $key) {
                 $result[$key] = $this->load(
                     $key,
                     $generator !== null
                         ? static fn (?array &$dependencies = null) => $generator($key, $dependencies)
-                        : null
+                        : null,
                 );
             }
 
@@ -234,11 +236,11 @@ class Cache extends \Nette\Caching\Cache
      * @return void
      */
     private function logLoadedKey(mixed $key, bool $miss = false): void {
-        if (!$this->debug) {
+        if ( ! $this->debug) {
             return;
         }
         $key = is_scalar($key) ? (string) $key : serialize($key);
-        if (!isset(self::$loadedKeys[$key])) {
+        if ( ! isset(self::$loadedKeys[$key])) {
             self::$loadedKeys[$key] = [0, 0];
         }
         self::$loadedKeys[$key][0]++;

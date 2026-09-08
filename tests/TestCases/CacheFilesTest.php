@@ -8,6 +8,7 @@ use Lsr\Caching\Cache;
 use Nette\Caching\Storages\FileStorage;
 use Nette\Caching\Storages\SQLiteJournal;
 use PHPUnit\Framework\TestCase;
+use RuntimeException;
 
 class CacheFilesTest extends TestCase
 {
@@ -27,14 +28,14 @@ class CacheFilesTest extends TestCase
                 unlink($file);
             }
         }
-        if (!file_exists($cacheDir) && !mkdir($cacheDir) && !is_dir($cacheDir)) {
-            throw new \RuntimeException('Could not create cache directory');
+        if ( ! file_exists($cacheDir) && ! mkdir($cacheDir) && ! is_dir($cacheDir)) {
+            throw new RuntimeException('Could not create cache directory');
         }
 
         $this->cache = new Cache(
             new FileStorage(
                 $cacheDir,
-                new SqliteJournal($journalDb)
+                new SQLiteJournal($journalDb),
             ),
         );
     }

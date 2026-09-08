@@ -25,7 +25,7 @@ final class CacheCleanCommand extends Command
             'tag',
             't',
             InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY,
-            'If set, only the records with specified tags will be removed.'
+            'If set, only the records with specified tags will be removed.',
         );
     }
 

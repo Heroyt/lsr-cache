@@ -1,5 +1,5 @@
 {
-  "name": "lsr/cache",
+  "name": "lsr/caching",
   "license": "MIT",
   "description": "Laser framework core - Cache",
   "version": "0.3.5",
@@ -48,6 +48,9 @@
     "nette/di": "^3.2",
     "tracy/tracy": "^2.10",
     "lsr/helpers": "^0.3"
+  },
+  "replace": {
+    "lsr/cache": "self.version"
   },
   "suggest": {
     "lsr/console": "Loads the cache:clean command into the framework console."
